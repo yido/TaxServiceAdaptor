@@ -1,0 +1,583 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "0.1",
+    "title": "TaxSignatureService API",
+    "description": "API For requesting electronic signatures and uploading printed invoices"
+  },
+  "paths": {
+    "/api/v1/zra/admin/initialize-service": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Initializes Tax Signature Service",
+        "operationId": "initializeServie",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "terminalId": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Service Successfully Initialized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zra/printed-invoices/": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Post Printed Invoice",
+        "description": "Limit 500",
+        "operationId": "postPrintedInvoice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "properties": {
+                    "invoiceReference": {
+                      "type": "string",
+                      "example": "SFGEGJERIG"
+                    },
+                    "printedDate": {
+                      "type": "string",
+                      "format": "date"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Invoices Uploaded"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "413": {
+            "description": "Payload Too Large"
+          },
+          "422": {
+            "description": "One or more invoices Not Processed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "invoice": {
+                        "type": "string",
+                        "description": "invoice reference"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "description": "explaination of failure"
+                      }
+                    },
+                    "required": [
+                      "invoice"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/zra/signed-invoices/{reference}": {
+      "get": {
+        "tags": [
+          "signatures",
+          "invoices"
+        ],
+        "summary": "Get Signed Invoice",
+        "operationId": "fetchSignedInvoiceByReference",
+        "parameters": [
+          {
+            "name": "reference",
+            "in": "path",
+            "description": "Universal Invoice Reference Number",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "DFJKGRRYI"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successfully Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SignedInvoice"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "404": {
+            "description": "Invoice Not Found"
+          }
+        }
+      }
+    },
+    "/api/v1/zra/unsigned-invoices": {
+      "post": {
+        "tags": [
+          "signatures",
+          "invoices"
+        ],
+        "summary": "Save and Sign Invoice",
+        "description": "Sign Invoice and Save in System",
+        "operationId": "generateInvoiceSignature",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/UnsignedInvoice"
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "invoiceReference": {
+                      "type": "string",
+                      "description": "Same Reference Number from SSRS, used for cross system tracking"
+                    },
+                    "fiscalInformation": {
+                      "$ref": "#/components/schemas/FiscalInformation"
+                    },
+                    "taxInformation": {
+                      "$ref": "#/components/schemas/TaxInformation"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid status value"
+          },
+          "401": {
+            "description": "Unauthorized Request"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBag"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "SwaggerHub API Auto Mocking",
+      "url": "https://virtserver.swaggerhub.com/swaggerhub/TaxSignatureService/0.1"
+    }
+  ],
+  "components": {
+    "requestBodies": {
+      "UnsignedInvoice": {
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "required": [
+                "invoiceReference",
+                "declarationInformation",
+                "itemInformation"
+              ],
+              "properties": {
+                "invoiceReference": {
+                  "type": "string",
+                  "description": "The Roster/SSRS Reference of this invoice"
+                },
+                "declarationInformation": {
+                  "$ref": "#/components/schemas/DeclarationsInfo"
+                },
+                "itemInformation": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Item"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ErrorBag": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "field": {
+              "type": "string",
+              "example": "Reference Number"
+            },
+            "message": {
+              "type": "string",
+              "example": "Reference Number is Required"
+            }
+          }
+        }
+      },
+      "TaxInfo": {
+        "type": "object",
+        "properties": {
+          "taxPayer": {
+            "type": "object",
+            "properties": {
+              "tPin": {
+                "type": "number"
+              },
+              "vat": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              }
+            }
+          },
+          "taxControl": {
+            "type": "object",
+            "properties": {
+              "offlineNum": {
+                "type": "number"
+              },
+              "singleAmount": {
+                "type": "number"
+              },
+              "monthlyInvoiceQuantity": {
+                "type": "number"
+              },
+              "monthlyCreditNoteAmout": {
+                "type": "number"
+              },
+              "approvedDate": {
+                "type": "string"
+              },
+              "approvedMode": {
+                "type": "string"
+              },
+              "invoiceHoldingQuantity": {
+                "type": "number"
+              },
+              "remainThreshold": {
+                "type": "number"
+              },
+              "monthlyCreditNoteNum": {
+                "type": "number"
+              }
+            }
+          },
+          "taxTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "taxType": {
+                  "type": "string"
+                },
+                "category": {
+                  "type": "object",
+                  "properties": {
+                    "no": {
+                      "type": "number"
+                    },
+                    "taxCode": {
+                      "type": "string"
+                    },
+                    "taxName": {
+                      "type": "string"
+                    },
+                    "taxRate": {
+                      "type": "number"
+                    },
+                    "effectiveDate": {
+                      "type": "string"
+                    },
+                    "expiredDate": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "backupIp": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serverIp": {
+                  "type": "string"
+                },
+                "serverPort": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Item": {
+        "type": "object",
+        "required": [
+          "id",
+          "taxCategoryCode",
+          "name",
+          "quantity",
+          "taxAmount",
+          "unitPrice"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 4,
+            "description": "Valid itemID from Roster"
+          },
+          "taxCategoryCode": {
+            "type": "string",
+            "example": "C2",
+            "description": "Tax Category Code as prescribed in ZRA Document"
+          },
+          "name": {
+            "type": "string",
+            "example": "Apple"
+          },
+          "quantity": {
+            "type": "integer",
+            "example": 4
+          },
+          "unitPrice": {
+            "type": "number",
+            "example": 5
+          },
+          "recommendedRetailPrice": {
+            "type": "number",
+            "example": 4.5,
+            "description": "This is mandatory when the tax category of the goods is MTV (B)"
+          }
+        }
+      },
+      "DeclarationsInfo": {
+        "type": "object",
+        "required": [
+          "invoiceStatus",
+          "invoiceIssuer",
+          "description",
+          "currencyType",
+          "conversionRate",
+          "saleType"
+        ],
+        "properties": {
+          "buyerTpin": {
+            "type": "string",
+            "example": "100022473"
+          },
+          "buyerVatAccName": {
+            "type": "string",
+            "example": "40168862"
+          },
+          "buyerName": {
+            "type": "string",
+            "example": "James Chungu"
+          },
+          "buyerAdress": {
+            "type": "string",
+            "example": "Box 24, Kitwe"
+          },
+          "buyerNumber": {
+            "type": "string",
+            "example": "26486679805"
+          },
+          "totalDiscount": {
+            "type": "number",
+            "example": 0
+          },
+          "invoiceStatus": {
+            "type": "number",
+            "description": "One of 1 [Normal], 2 [Credit Note], or 3 [Debit Note]",
+            "example": 1
+          },
+          "invoiceIssuer": {
+            "type": "string",
+            "example": "Innocent Bwalya"
+          },
+          "description": {
+            "type": "string",
+            "example": "Value"
+          },
+          "currencyType": {
+            "type": "string",
+            "description": "ZMW",
+            "example": "ZMW"
+          },
+          "conversionRate": {
+            "type": "number",
+            "example": 0,
+            "description": "Rate will be 0 (ZMW)"
+          },
+          "saleType": {
+            "type": "number",
+            "description": "One of 0 [Cash Sale] or 1 [Credit Sale]",
+            "example": 1
+          },
+          "localPurchaseOrder": {
+            "type": "string",
+            "example": "23423452345342"
+          }
+        }
+      },
+      "FiscalInformation": {
+        "type": "object",
+        "required": [
+          "invoiceNumber",
+          "invoiceCode",
+          "fiscalCode",
+          "qrCode",
+          "terminalId"
+        ],
+        "properties": {
+          "invoiceNumber": {
+            "type": "string",
+            "example": "000017210020"
+          },
+          "invoiceCode": {
+            "type": "string",
+            "example": "16130010"
+          },
+          "fiscalCode": {
+            "type": "string",
+            "example": "11298303812903938000"
+          },
+          "terminalId": {
+            "type": "string",
+            "example": "531030026147"
+          },
+          "qrCode": {
+            "type": "object",
+            "required": [
+              "scannableUrl"
+            ],
+            "properties": {
+              "imageUrl": {
+                "type": "string",
+                "example": "https://sw.aws.com/some-image.png"
+              },
+              "scannableUrl": {
+                "type": "string",
+                "example": "http://efd.zra.org.zm:port/search/invoiceInspection/invoiceVerification?x={'INV':{'IC':'000017210020','IN':'00040187','TPIN:200001451','MACH':'531030026132','DATE':'20170607165355','AMT':'0000000300.00','FSC':'20211600381954181522'}}"
+              }
+            }
+          }
+        }
+      },
+      "TaxInformation": {
+        "type": "object",
+        "properties": {
+          "taxRates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "taxCode",
+                "taxName",
+                "taxRate",
+                "totalTaxableAmount"
+              ],
+              "properties": {
+                "taxCode": {
+                  "type": "string"
+                },
+                "taxName": {
+                  "type": "string"
+                },
+                "taxRate": {
+                  "type": "number"
+                },
+                "taxValue": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "taxAmount": {
+            "type": "number",
+            "description": "total of all tax values returned"
+          }
+        }
+      },
+      "SignedInvoice": {
+        "type": "object",
+        "required": [
+          "invoiceReference",
+          "fiscalInformation",
+          "taxInformation"
+        ],
+        "properties": {
+          "invoiceReference": {
+            "type": "string",
+            "description": "Same Reference Number from SSRS, used for cross system tracking"
+          },
+          "declarationInformation": {
+            "$ref": "#/components/schemas/DeclarationsInfo"
+          },
+          "itemInformation": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Item"
+            }
+          },
+          "fiscalInformation": {
+            "$ref": "#/components/schemas/FiscalInformation"
+          },
+          "taxInformation": {
+            "$ref": "#/components/schemas/TaxInformation"
+          }
+        }
+      }
+    }
+  }
+}
