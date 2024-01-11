@@ -1,0 +1,12 @@
+node_modules/
+yarn.lock
+coverage/
+template/
+build/
+dist/
+bin/
+obj/
+junit.xml
+.dccache
+.vscode/
+*~
